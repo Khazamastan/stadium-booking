@@ -1,0 +1,553 @@
+openapi: 3.1.0
+info:
+  title: Venue Booking API
+  version: 1.0.0
+  description: >
+    API for managing venues, events, and bookings in a stadium/auditorium scheduling
+    platform.
+servers:
+  - url: http://localhost:{port}/v1
+    description: Local development
+    variables:
+      port:
+        default: '3000'
+tags:
+  - name: Health
+  - name: Venues
+  - name: Events
+  - name: Bookings
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health status
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service health snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /venues:
+    get:
+      tags: [Venues]
+      summary: List venues
+      operationId: listVenues
+      responses:
+        '200':
+          description: Collection of venues
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueListResponse'
+    post:
+      tags: [Venues]
+      summary: Create venue
+      operationId: createVenue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueCreateInput'
+      responses:
+        '201':
+          description: Venue created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueResponse'
+  /venues/{venueId}:
+    get:
+      tags: [Venues]
+      summary: Get venue
+      operationId: getVenue
+      parameters:
+        - $ref: '#/components/parameters/VenueIdParam'
+      responses:
+        '200':
+          description: Venue details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /events:
+    get:
+      tags: [Events]
+      summary: List events
+      operationId: listEvents
+      parameters:
+        - in: query
+          name: venueId
+          schema:
+            type: string
+          description: Filter by venue identifier
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/EventStatus'
+          description: Filter by event status
+      responses:
+        '200':
+          description: Collection of events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+    post:
+      tags: [Events]
+      summary: Schedule event
+      operationId: createEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreateInput'
+      responses:
+        '201':
+          description: Event scheduled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /events/{eventId}:
+    get:
+      tags: [Events]
+      summary: Get event
+      operationId: getEvent
+      parameters:
+        - $ref: '#/components/parameters/EventIdParam'
+      responses:
+        '200':
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /bookings:
+    get:
+      tags: [Bookings]
+      summary: List bookings
+      operationId: listBookings
+      parameters:
+        - in: query
+          name: eventId
+          schema:
+            type: string
+          description: Filter bookings by event identifier
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/BookingStatus'
+          description: Filter bookings by booking status
+      responses:
+        '200':
+          description: Collection of bookings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+    post:
+      tags: [Bookings]
+      summary: Create booking
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreateInput'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /bookings/{bookingId}:
+    get:
+      tags: [Bookings]
+      summary: Get booking
+      operationId: getBooking
+      parameters:
+        - $ref: '#/components/parameters/BookingIdParam'
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /bookings/{bookingId}/cancel:
+    patch:
+      tags: [Bookings]
+      summary: Cancel booking
+      operationId: cancelBooking
+      parameters:
+        - $ref: '#/components/parameters/BookingIdParam'
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  parameters:
+    VenueIdParam:
+      name: venueId
+      in: path
+      required: true
+      schema:
+        type: string
+    EventIdParam:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+    BookingIdParam:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid client request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        uptime:
+          type: number
+          format: double
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        dependencies:
+          type: string
+          description: Aggregate dependency status
+      required: [uptime, message, timestamp, dependencies]
+    HealthResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/HealthStatus'
+    VenueLocation:
+      type: object
+      properties:
+        addressLine1:
+          type: string
+        addressLine2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+      required: [addressLine1, city, state, country, postalCode]
+    Venue:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [stadium, auditorium, arena, theatre, conference-hall]
+        capacity:
+          type: integer
+          minimum: 1
+        location:
+          $ref: '#/components/schemas/VenueLocation'
+        features:
+          type: array
+          items:
+            type: string
+        isIndoor:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - slug
+        - name
+        - type
+        - capacity
+        - location
+        - features
+        - isIndoor
+        - createdAt
+    VenueCreateInput:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        type:
+          type: string
+          enum: [stadium, auditorium, arena, theatre, conference-hall]
+        capacity:
+          type: integer
+          minimum: 1
+        location:
+          $ref: '#/components/schemas/VenueLocation'
+        features:
+          type: array
+          items:
+            type: string
+        isIndoor:
+          type: boolean
+      required: [name, capacity, location]
+    VenueResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Venue'
+    VenueListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Venue'
+            meta:
+              $ref: '#/components/schemas/CollectionMeta'
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+        venueId:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - venueId
+        - slug
+        - name
+        - startTime
+        - endTime
+        - status
+        - tags
+        - createdAt
+    EventCreateInput:
+      type: object
+      properties:
+        venueId:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - venueId
+        - name
+        - startTime
+        - endTime
+    EventResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Event'
+    EventListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Event'
+            meta:
+              $ref: '#/components/schemas/CollectionMeta'
+    EventStatus:
+      type: string
+      enum: [draft, scheduled, completed, cancelled]
+    BookingCustomer:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+      required: [name]
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        eventId:
+          type: string
+        seats:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        customer:
+          $ref: '#/components/schemas/BookingCustomer'
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - seats
+        - status
+        - customer
+        - createdAt
+    BookingCreateInput:
+      type: object
+      properties:
+        eventId:
+          type: string
+        seats:
+          type: integer
+          minimum: 1
+        customer:
+          $ref: '#/components/schemas/BookingCustomer'
+        notes:
+          type: string
+      required:
+        - eventId
+        - seats
+        - customer
+    BookingResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Booking'
+    BookingListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseEnvelope'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Booking'
+            meta:
+              $ref: '#/components/schemas/CollectionMeta'
+    BookingStatus:
+      type: string
+      enum: [pending, confirmed, cancelled]
+    ApiResponseEnvelope:
+      type: object
+      properties:
+        requestId:
+          type: string
+      required: [requestId]
+    CollectionMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          minimum: 0
+      required: [total]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+        requestId:
+          type: string
+      required: [error, requestId]
